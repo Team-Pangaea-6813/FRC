@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import math
 from enum import Enum
-
+from networktables import NetworkTables
 
 class GripPipeline:
     """
@@ -104,7 +104,10 @@ cam = cv2.VideoCapture(0)
 
 img_counter = 0
 
-r = 1
+NetworkTables.initialize()
+sd = NetworkTables.getTable("SmartDashboard")
+
+r = 10
 D = 10
 w = 1
 
@@ -129,43 +132,48 @@ while True:
     pipe = GripPipeline()
     img, cntrs = pipe.process(source0=frame)
 
-    cmap = []
-    for c in cntrs:
-        area = cv2.contourArea(c)
-        cmap.append((area, c))
+    if len(cntrs) > 1:
+        cmap = []
+        for c in cntrs:
+            area = cv2.contourArea(c)
+            cmap.append((area, c))
 
-    cmap.sort(key=lambda x: x[0])
-    big_cntrs = []
-    big_cntrs.append(cmap[len(cmap)-2][1])
-    big_cntrs.append(cmap[len(cmap)-1][1])
+        cmap.sort(key=lambda x: x[0])
+        big_cntrs = []
+        big_cntrs.append(cmap[len(cmap)-2][1])
+        big_cntrs.append(cmap[len(cmap)-1][1])
 
-    ccX = 0
-    ccY = 0
-    cX = []
-    cY = []
+        ccX = 0
+        ccY = 0
+        cX = []
+        cY = []
 
-    for c in big_cntrs:
-        # compute the center of the contour
-        M = cv2.moments(c)
-        x = int(M["m10"] / M["m00"])
-        y = int(M["m01"] / M["m00"])
+        for c in big_cntrs:
+            # compute the center of the contour
+            M = cv2.moments(c)
+            x = int(M["m10"] / M["m00"])
+            y = int(M["m01"] / M["m00"])
 
-        cX.append(x)
-        cY.append(y)
+            cX.append(x)
+            cY.append(y)
 
-        # draw the contour and center of the shape on the image
-        cv2.drawContours(img, [c], -1, (0, 255, 0), 2)
-        cv2.circle(img, (x, y), 7, (128, 128, 128), -1)
+            # draw the contour and center of the shape on the image
+            cv2.drawContours(img, [c], -1, (0, 255, 0), 2)
+            cv2.circle(img, (x, y), 7, (128, 128, 128), -1)
 
-    ccX = int(np.mean(cX))
-    ccY = int(np.mean(cY))
-    cv2.circle(img, (ccX, ccY), 7, (128, 128, 128), -1)
+        ccX = int(np.mean(cX))
+        ccY = int(np.mean(cY))
+        cv2.circle(img, (ccX, ccY), 7, (128, 128, 128), -1)
 
-    PD = abs(cX[0] - cX[1])
-    Pd2 = abs(ccX - img.size[0]/2)
+        PD = abs(cX[0] - cX[1])
+        Pd2 = abs(ccX - img.shape[0]/2)
 
-    T = r * np.arccos((D*Pd2) / (r*PD)) / (2 * np.pi * w)
-    # send T to Roborio
+        print((D*Pd2) / (r*PD))
+        T = r * np.arccos((D*Pd2) / (r*PD)) / (2 * np.pi * w)
+        print(T)
+
+        # send T to Roborio
+        sd.putNumber("WheelTurns", T)
 
     # show the image
     cv2.imshow("Image", img)

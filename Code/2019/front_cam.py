@@ -106,8 +106,9 @@ while True:
     M = cv2.moments(thresh)
 
     # calculate x,y coordinate of center
-    cX = int(M["m10"] / M["m00"])
-    cY = int(M["m01"] / M["m00"])
+    if M["m00"] > 0:
+        cX = int(M["m10"] / M["m00"])
+        cY = int(M["m01"] / M["m00"])
 
     # put text and highlight the center
     cv2.circle(img, (cX, cY), 5, (128, 128, 128), -1)
