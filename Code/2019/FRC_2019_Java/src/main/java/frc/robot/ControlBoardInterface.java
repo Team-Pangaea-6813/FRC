@@ -10,5 +10,5 @@ public interface ControlBoardInterface {
 	double getLeftTrigger();
 
 	boolean getBrake();
-
+	boolean getAButton();
 }

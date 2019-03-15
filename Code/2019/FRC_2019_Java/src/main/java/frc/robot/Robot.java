@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.wpilibj.Spark;
+import edu.wpi.first.wpilibj.VictorSP;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -34,35 +35,18 @@ public class Robot extends TimedRobot {
   private final SendableChooser<String> m_chooser = new SendableChooser<>();
   private final SendableChooser<String> startingPos = new SendableChooser<>();
 
-  private final double speed = 0.5;
-
-  private Encoder sampleEncoder = new Encoder(0, 1, false, Encoder.EncodingType.k4X);
-  sampleEncoder.setMaxPeriod(.1);
-  sampleEncoder.setMinRate(10);
-  sampleEncoder.setDistancePerPulse(5);
-  sampleEncoder.setReverseDirection(true);
-  sampleEncoder.setSamplesToAverage(7);
-
-  int count = sampleEncoder.get();
-  double raw = sampleEncoder.getRaw();
-  double distance = sampleEncoder.getDistance();
-  double period = sampleEncoder.getPeriod();
-  double rate = sampleEncoder.getRate();
-  boolean direction = sampleEncoder.getDirection();
-  boolean stopped = sampleEncoder.getStopped();
-  
+  private final double speed = 0.65;
   private ControlBoardInterface mControlBoard = GamepadControlBoard.getInstance();
-  private NetworkTableEntry distToTurn;
-  private NetworkTableInstance tblinst = NetworkTableInstance.getDefault();
-  private NetworkTable table = tblinst.getTable("SmartDashboard");
+  private NetworkTableEntry alignDifEntry;
 	double forward = 0;
-	double lr = 0;
+  double lr = 0;
+  double k = 0;
 	String gameData;
 	Spark drive1 = new Spark(0);
 	Spark drive2 = new Spark(1);
 	Spark drive3 = new Spark(2);
 	Spark drive4 = new Spark(3);
-	Spark kick = new Spark(4);
+	VictorSP kick = new VictorSP(4);
 	private Timer timer = new Timer();
 	char[] gameMap = {'_', 'L', '_', 'R'};
 	int pos;
@@ -82,7 +66,11 @@ public class Robot extends TimedRobot {
 		startingPos.addOption("Left", "1");
 		startingPos.addOption("Middle", "2");
 		startingPos.addOption("Right", "3");
-		SmartDashboard.putData(startingPos);
+    SmartDashboard.putData(startingPos);
+    
+    NetworkTableInstance tblinst = NetworkTableInstance.getDefault();
+    NetworkTable table = tblinst.getTable("SmartDashboard");
+    alignDifEntry = table.getEntry("AlignDif");
   }
 
   /**
@@ -156,29 +144,47 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     double throttle = mControlBoard.getThrottle();
 		double turn = mControlBoard.getTurn();
-		boolean brake = mControlBoard.getBrake();
+    boolean brake = mControlBoard.getBrake();
+    boolean a_button = mControlBoard.getAButton();
 		double RT = mControlBoard.getRightTrigger();
-		double LT = mControlBoard.getLeftTrigger();
-		if (Math.abs(throttle) > 0.1) {
+    double LT = mControlBoard.getLeftTrigger();
+
+		if (Math.abs(throttle) > 0.05) {
 				forward = throttle;
 		}
 
-		if(Math.abs(turn) > 0.1) {
+		if(Math.abs(turn) > 0.05) {
 			lr = turn;
 		}
 		if(throttle != 0 && lr == 0) {
-			move(forward*speed, forward*speed,1);
+			move(forward*speed, forward*speed, -1);
 		}
 		else if(Math.abs(throttle) < 0.1 && lr != 0) {
 			move(lr*speed, -lr*speed,1);
 		} else {
-			move((forward+lr)*speed, (forward-lr)*speed,1);
+			move((forward+lr)*speed, (forward-lr)*speed, 1);
 		}
 
-    if (RT > 0.1) kick.set(RT);
-    if (LT > 0.1) kick.set(LT);
+    if (RT < 0.05) k = -RT/8;
+    if (LT < -0.05) k = LT/4;
 
-    forward = lr = 0;
+    kick.set((RT-LT)*0.3);
+
+  //   if (a_button) {
+  //   double alignDif = alignDifEntry.getDouble(0.0);
+  //   int threshold = 30; // pixels
+  //   float alignSpeed = 0.2f;
+  //   if (alignDif > threshold) { // need to go right
+  //     move(alignSpeed, -alignSpeed, 1);
+  //   } else if (alignDif < -threshold) { // need to go left
+  //     move(-alignSpeed, alignSpeed, 1);
+  //   } else if (Math.abs(alignDif) <= threshold) {
+  //     move(forward*speed, forward*speed, 1);
+  //   }
+  // }
+
+    forward = lr = k = 0;
+    // kick.set(0);
   }
 
   /**
@@ -190,8 +196,8 @@ public class Robot extends TimedRobot {
 
   private void move(double a, double b, float m)
 	{
-		if(Math.abs(a) > m*speed) a = m*speed*a/Math.abs(a);
-		if(Math.abs(b) > m*speed) b = m*speed*b/Math.abs(b);
+		if(Math.abs(a) > Math.abs(m*speed)) a = m*speed*a/Math.abs(a);
+		if(Math.abs(b) > Math.abs(m*speed)) b = m*speed*b/Math.abs(b);
 		
 		drive1.set(a);
     drive2.set(a);

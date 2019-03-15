@@ -165,16 +165,12 @@ while True:
         ccY = int(np.mean(cY))
         cv2.circle(img, (ccX, ccY), 7, (128, 128, 128), -1)
 
-        PD = abs(cX[0] - cX[1])
-        Pd2 = abs(ccX - img.shape[0]/2)
-
-        print((D*Pd2) / (r*PD))
-        T = np.sign(ccX - img.shape[0]/2) * r * np.arccos((D*Pd2) / (r*PD))
+        dif = ccX - img.shape[0]/2;
         # go left is negative, go right is positive
-        print(T)
+        print(dif)
 
         # send T to Roborio
-        sd.putNumber("DistanceToTurn", T)
+        sd.putNumber("AlignDif", dif)
 
     # show the image
     cv2.imshow("Image", img)

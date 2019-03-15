@@ -49,4 +49,10 @@ public class GamepadControlBoard implements ControlBoardInterface
 	{
 		return mGamepad.getRawAxis(2);
 	}
+
+	@Override
+	public boolean getAButton()
+	{
+		return mGamepad.getRawButton(1);
+	}
 }
